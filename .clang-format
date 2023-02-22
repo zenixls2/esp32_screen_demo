@@ -1,0 +1,8 @@
+# .clang-format file
+BasedOnStyle: Google
+
+AllowAllArgumentsOnNextLine: false
+BreakBeforeBraces: Allman
+IndentCaseLabels: false
+IndentWidth: 4
+NamespaceIndentation: All
