@@ -1,6 +1,11 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <TFT_eSPI.h>
+#include <esp_pthread.h>
+
+#include <atomic>
+#include <sstream>
+#include <thread>
 
 #define TEXT_HEIGHT 16
 #define CNUMBER 40
@@ -60,10 +65,40 @@ void drawUpdate(TFT_eSprite& spr, uint16_t sel, circle_t& circle)
     }
 }
 
+#ifdef HC_SR04
+const int TRIG = 22;
+const int ECHO = 21;
+std::atomic_uint32_t duration;
+
+void ultrasound_meter()
+{
+    for (;;)
+    {
+        digitalWrite(TRIG, LOW);
+        delayMicroseconds(2);
+        digitalWrite(TRIG, HIGH);
+        delayMicroseconds(10);
+        digitalWrite(TRIG, LOW);
+        duration = pulseIn(ECHO, HIGH);
+        delayMicroseconds(100);
+    }
+}
+#endif  // HC_SR04
+
 extern "C" void app_main()
 {
     initArduino();
     Serial.begin(115200);
+
+#ifdef HC_SR04
+    pinMode(ECHO, INPUT);
+    pinMode(TRIG, OUTPUT);
+    auto cfg = esp_pthread_get_default_config();
+    cfg.pin_to_core = 1;
+    esp_pthread_set_cfg(&cfg);
+    std::thread thread1(ultrasound_meter);
+#endif  // HC_SR04
+
     TFT_eSPI tft = TFT_eSPI();
     TFT_eSprite spr[2] = {TFT_eSprite(&tft), TFT_eSprite(&tft)};
     uint16_t* sprPtr[2];
@@ -107,6 +142,17 @@ extern "C" void app_main()
     for (;;)
     {
         drawUpdate(spr[0], 0, circle);
+#ifdef HC_SR04
+        uint32_t distance = duration.load();
+        distance = double(distance) * 0.01715;
+        std::stringstream ss;
+        ss << " Distance: " << distance;
+
+        spr[0].setTextColor(TFT_BLUE, TFT_WHITE, false);
+        spr[0].setTextDatum(BC_DATUM);
+        spr[0].drawString(ss.str().c_str(), spr[0].width() / 2, spr[0].height(),
+                          4);
+#endif  // HC_SR04
         tft.pushImageDMA(0, 16, TFT_WIDTH, TFT_HEIGHT / 2 - 8, sprPtr[0]);
         drawUpdate(spr[1], 1, circle);
         tft.pushImageDMA(0, TFT_HEIGHT / 2 + 8, TFT_WIDTH, TFT_HEIGHT / 2 - 8,

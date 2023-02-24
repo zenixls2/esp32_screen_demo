@@ -25,3 +25,12 @@ To monitor
 ```bash
 pio device monitor
 ```
+
+### HC\_SR04 setup (the ultrasonic sensor)
+
+- VCC: 5v or 3.3v both OK
+- TRIG: GPIO22
+- ECHO: GPIO21
+
+And change the flag `-DHC_SR04=1` in the platformio.ini to switch it on or off.<br>
+If we switch it on, from the screen we'll see the text of distance it detects in centimeter.
